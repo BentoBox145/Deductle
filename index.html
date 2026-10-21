@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deductle</title>
+<style>
+:root{--bg:#000;--panel:#0b0b0d;--line:#2b2b31;--tx:#f2f2f2;--dim:#8d8d98;--blue:#5aa9ff}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--tx);font:17px/1.6 Georgia,"Times New Roman",serif;background:radial-gradient(ellipse 70% 45% at 50% -5%,#1d1d25 0,#000 70%) fixed}
+h1,h2,h3{font-weight:400;margin:0 0 .5em}
+button,input,textarea{font:inherit;color:var(--tx);background:#050507;border:1px solid var(--line);padding:.55em .9em;border-radius:0}
+button{cursor:pointer;background:transparent}
+button:hover:not(:disabled){border-color:#fff}
+button:disabled{opacity:.4;cursor:default}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+textarea{width:100%;resize:vertical}input{width:100%}
+.dim{color:var(--dim)}
+.center{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;padding:2rem;text-align:center}
+.title{font-size:clamp(2.6rem,10vw,5.5rem);letter-spacing:.3em;margin-right:-.3em;text-shadow:0 0 40px #ffffff33}
+.big{width:min(320px,100%);padding:.9em;font-size:1.05rem;letter-spacing:.1em}
+.corner{position:fixed;right:14px;bottom:14px;font-size:.8rem;color:var(--dim);border-color:transparent}
+.wrap{max-width:1300px;margin:0 auto;padding:1rem 1.2rem 3rem}
+.top{display:flex;gap:1rem;align-items:center;justify-content:space-between;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:.8rem}
+.top h2{margin:0;letter-spacing:.12em}
+.brief{margin:1.2rem 0;padding:1rem 1.2rem;border-left:3px solid #fff;background:var(--panel);white-space:pre-wrap}
+.grid{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:1.2rem;align-items:start}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.col{background:var(--panel);border:1px solid var(--line);padding:1rem 1.1rem;min-height:120px}
+.agent{margin-bottom:1.3rem}.agent h3{font-size:1.05rem;border-bottom:1px solid var(--line);padding-bottom:.3em;letter-spacing:.08em}
+.agent p{margin:.5em 0}
+.lnk{all:unset;color:var(--blue);text-decoration:underline;cursor:pointer}
+.lnk:hover{color:#fff}.lnk:focus-visible{outline:2px solid var(--blue)}
+.lnk.seen{color:var(--dim);text-decoration:none;cursor:default}
+.spent .lnk:not(.seen){color:var(--dim);text-decoration:line-through;cursor:not-allowed}
+.doc{border-left:2px solid #fff;padding:.2rem 0 .2rem 1rem;margin-bottom:1.2rem;font-family:"Courier New",monospace;font-size:.95rem;animation:in .4s}
+.doc h3{font-size:1rem;color:var(--dim)}
+@keyframes in{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.doc{animation:none}}
+.result{margin-top:1rem;font-size:1.1rem}.ok{color:#8dff9c}.bad{color:#ff7b7b}
+.report{margin-top:1.5rem;border:1px solid #fff;padding:1.2rem 1.4rem;background:var(--panel);white-space:pre-wrap}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;margin:.8rem 0}
+.item{display:flex;justify-content:space-between;gap:.6rem;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.f{display:block;margin:.7rem 0}.f span{display:block;font-size:.9rem;margin-bottom:.2rem}
+.node{border-left:1px solid var(--line);padding-left:.9rem;margin:.3rem 0 .3rem .5rem}
+.ag{border:1px solid var(--line);padding:.8rem 1rem;margin:1rem 0;background:var(--panel)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const HASH="d0dfb798047e9ad6ceedcc52d7beab36239a28d96a30f0ab41199903d8076ebe";
+const KEY="deductle_levels",MAX=7;
+const $=s=>document.querySelector(s);
+const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+const n=(t,k)=>({text:t,kids:k||{}});
+const SAMPLE=[{name:"The Meridian Heist",
+description:"On the night of 12 March, the Meridian Diamond vanished from a locked vault in the Blackwood Museum. There was no forced entry, and the alarm was offline for nine minutes. Find the thief.",
+culprit:"Helena Voss, Voss",
+report:"Curator Helena Voss used her office keycard to open the vault at 22:05 and looped Camera 3 from her own terminal. She bought the green scarf that left fibres in the case, and rented a storage unit under the alias Ellen Marsh to hide the diamond. Dale Park and Edmund Hale both had alibis.",
+agents:[
+{name:"Forensics",items:[
+n("The vault was opened with a valid [[keycard]]. Nothing was forced.",{keycard:n("Card #0417 opened the vault at 22:05, during the alarm outage. It is registered to the curator’s office.")}),
+n("Fibres of green [[wool]] were found inside the display case.",{wool:n("Rare Shetland yarn, sold only at [[Lindqvist & Sons]].",{"Lindqvist & Sons":n("Their ledger shows one green scarf sold in January to H. Voss.")})}),
+n("The alarm was offline for exactly nine minutes."),
+n("The vault floor had been freshly mopped.")]},
+{name:"Surveillance",items:[
+n("Camera 3 was [[looped]] at 22:14.",{looped:n("The loop was started from the terminal in the curator’s office.")}),
+n("Night guard Tom Reyes says he heard nothing."),
+n("A delivery van was parked outside from 21:30."),
+n("The loading dock door was found unlocked.")]},
+{name:"Interviews",items:[
+n("Curator Helena Voss says she left the museum at 18:00."),
+n("Intern Dale Park says he was at the [[gala]] all evening.",{gala:n("Photos place Dale Park at the Grand Hotel gala from 20:00 until midnight.")}),
+n("Security chief Mara Quinn says the keycard logs are routinely backed up."),
+n("Donor Edmund Hale was in Geneva this week.")]},
+{name:"Finance",items:[
+n("Edmund Hale’s insurance policy was raised to [[triple]] its value last month.",{triple:n("The upgrade was a routine renewal, signed by Hale’s broker in Geneva.")}),
+n("A [[storage unit]] was rented in March under the name Ellen Marsh.",{"storage unit":n("The unit holds a velvet jewellery case. The rental form’s handwriting matches H. Voss.")}),
+n("Dale Park’s debts were cleared last week by a family loan."),
+n("Mara Quinn’s accounts show nothing unusual.")]}
+]}];
+let levels=[];const view=$("#app");
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(levels))}catch(e){}};
+async function load(){
+  let l=null;
+  try{l=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+  if(!Array.isArray(l)||!l.length){try{const r=await fetch("levels.json",{cache:"no-store"});if(r.ok)l=await r.json()}catch(e){}}
+  levels=Array.isArray(l)&&l.length?l:JSON.parse(JSON.stringify(SAMPLE));
+  menu();
+}
+function menu(){
+  view.replaceChildren();
+  const w=el("div","center");
+  const d=el("button","big","Daily case"),a=el("button","big","Level archive");
+  d.onclick=()=>play(levels[levels.length-1]);a.onclick=archive;
+  w.append(el("h1","title","Deductle"),el("p","dim","Every crime has a culprit. Spend your leads wisely."),d,a);
+  const ad=el("button","corner","Admin");ad.onclick=login;
+  view.append(w,ad);
+}
+function archive(){
+  view.replaceChildren();
+  const w=el("div","wrap"),t=el("div","top"),b=el("button",null,"Back");b.onclick=menu;
+  t.append(el("h2",null,"Level archive"),b);w.append(t);
+  levels.map((L,i)=>[L,i]).reverse().forEach(([L,i])=>{
+    const r=el("div","item"),p=el("button",null,"Play");p.onclick=()=>play(L);
+    r.append(el("span",null,(i+1)+". "+L.name),p);w.append(r);
+  });
+  view.append(w);
+}
+function play(L){
+  let used=0,done=false;const opened=new Set(),btns=new Map();
+  view.replaceChildren();
+  const w=el("div","wrap"),t=el("div","top"),back=el("button",null,"Leave case"),cnt=el("span","dim");
+  back.onclick=menu;
+  const upd=()=>{cnt.textContent="Leads used: "+used+" of "+MAX;w.classList.toggle("spent",used>=MAX)};upd();
+  t.append(back,el("h2",null,L.name),cnt);
+  const brief=el("div","brief",L.description);
+  const g=el("div","grid"),left=el("section","col"),mid=el("section","col"),right=el("section","col");
+  const empty=el("p","dim","No documents yet. Click a blue lead to add it to the case file.");
+  mid.append(el("h3",null,"Case file"),empty);
+  function rich(node){
+    const f=document.createDocumentFragment();
+    String(node.text||"").split(/(\[\[.+?\]\])/).forEach(p=>{
+      const m=p.match(/^\[\[(.+?)\]\]$/);
+      if(!m){f.append(p);return}
+      const word=m[1].trim(),k=node.kids&&node.kids[word];
+      if(!k){f.append(word);return}
+      const b=el("button","lnk",word);
+      if(!btns.has(k))btns.set(k,[]);btns.get(k).push(b);
+      b.onclick=()=>{
+        if(done||opened.has(k)||used>=MAX)return;
+        opened.add(k);used++;upd();empty.remove();
+        btns.get(k).forEach(x=>x.classList.add("seen"));
+        const d=el("div","doc");d.append(el("h3",null,word));
+        const p=el("p");p.append(rich(k));d.append(p);mid.append(d);
+        d.scrollIntoView({block:"nearest",behavior:"smooth"});
+      };
+      f.append(b);
+    });
+    return f;
+  }
+  left.append(el("h3",null,"Your agents"));
+  L.agents.forEach(a=>{
+    const d=el("div","agent");d.append(el("h3",null,a.name));
+    a.items.forEach(it=>{const p=el("p");p.append(rich(it));d.append(p)});
+    left.append(d);
+  });
+  right.append(el("h3",null,"Name the culprit"));
+  const inp=el("input");inp.placeholder="Full name";inp.setAttribute("aria-label","Culprit name");
+  const go=el("button",null,"Make accusation"),res=el("div","result");
+  const note=el("p","dim","You have one guess.");
+  go.style.marginTop=".7rem";
+  const submit=()=>{
+    const v=inp.value.trim().toLowerCase();if(!v||done)return;
+    done=true;inp.disabled=go.disabled=true;
+    const ok=String(L.culprit).split(",").map(s=>s.trim().toLowerCase()).includes(v);
+    res.className="result "+(ok?"ok":"bad");
+    res.textContent=ok?"Case solved. You found the culprit.":"Wrong. The culprit got away.";
+    const rep=el("div","report");
+    rep.append(el("h3",null,"After action report"),el("p",null,"Culprit: "+String(L.culprit).split(",")[0].trim()),el("p",null,L.report||""));
+    const m=el("button",null,"Back to menu");m.onclick=menu;m.style.marginTop="1rem";rep.append(m);
+    w.append(rep);rep.scrollIntoView({behavior:"smooth"});
+  };
+  go.onclick=submit;inp.onkeydown=e=>{if(e.key==="Enter")submit()};
+  right.append(inp,go,note,res);
+  g.append(left,mid,right);w.append(t,brief,g);view.append(w);
+}
+async function login(){
+  const p=prompt("Admin password");if(p==null)return;
+  if(!(window.crypto&&crypto.subtle)){alert("Admin login needs a secure (https) page.");return}
+  const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(p));
+  const h=[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+  if(h===HASH)admin();else alert("Access denied.");
+}
+function admin(){
+  view.replaceChildren();
+  const w=el("div","wrap"),t=el("div","top"),ex=el("button",null,"Exit");ex.onclick=menu;
+  t.append(el("h2",null,"Level creator"),ex);w.append(t);
+  w.append(el("p","dim","Levels are saved in this browser. To publish, download levels.json and upload it next to index.html. The last level in the list is the daily case."));
+  const row=el("div","row"),nw=el("button",null,"New level"),dl=el("button",null,"Download levels.json"),rs=el("button",null,"Discard local changes");
+  nw.onclick=()=>{
+    levels.push({name:"New case",description:"",culprit:"",report:"",agents:[1,2,3,4].map(i=>({name:"Agent "+i,items:[0,1,2,3].map(()=>n(""))}))});
+    save();edit(levels.length-1);
+  };
+  dl.onclick=()=>{
+    const a=el("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(levels,null,1)],{type:"application/json"}));
+    a.download="levels.json";a.click();
+  };
+  rs.onclick=()=>{if(confirm("Discard local edits and reload the published levels?")){localStorage.removeItem(KEY);load()}};
+  row.append(nw,dl,rs);w.append(row);
+  levels.forEach((L,i)=>{
+    const r=el("div","item"),b=el("div","row");
+    const e=el("button",null,"Edit"),p=el("button",null,"Play"),u=el("button",null,"Up"),d=el("button",null,"Down"),x=el("button",null,"Delete");
+    e.onclick=()=>edit(i);p.onclick=()=>play(L);
+    u.onclick=()=>{if(i>0){[levels[i-1],levels[i]]=[levels[i],levels[i-1]];save();admin()}};
+    d.onclick=()=>{if(i<levels.length-1){[levels[i+1],levels[i]]=[levels[i],levels[i+1]];save();admin()}};
+    x.onclick=()=>{if(confirm("Delete “"+L.name+"”?")){levels.splice(i,1);save();admin()}};
+    b.style.margin="0";b.append(e,p,u,d,x);r.append(el("span",null,(i+1)+". "+L.name),b);w.append(r);
+  });
+  view.append(w);
+}
+function field(label,obj,key,rows,after){
+  const w=el("label","f");w.append(el("span","dim",label));
+  const i=el(rows?"textarea":"input");if(rows)i.rows=rows;i.value=obj[key]||"";
+  i.oninput=()=>{obj[key]=i.value;save()};
+  if(after)i.onchange=after;
+  w.append(i);return w;
+}
+const words=s=>[...new Set([...String(s).matchAll(/\[\[(.+?)\]\]/g)].map(m=>m[1].trim()))];
+function nodeEd(node,label){
+  const w=el("div","node"),kc=el("div");
+  const draw=()=>{
+    kc.replaceChildren();node.kids=node.kids||{};
+    words(node.text).forEach(k=>{
+      if(!node.kids[k])node.kids[k]=n("");
+      kc.append(nodeEd(node.kids[k],"Blue link “"+k+"” reveals"));
+    });
+    save();
+  };
+  w.append(field(label,node,"text",3,draw),kc);draw();return w;
+}
+function edit(i){
+  const L=levels[i];view.replaceChildren();
+  const w=el("div","wrap"),t=el("div","top"),b=el("button",null,"Back to levels");b.onclick=admin;
+  t.append(el("h2",null,"Edit level"),b);w.append(t);
+  w.append(el("p","dim","Make a blue link by wrapping words in double square brackets, like [[keycard]]. When you click out of the box, a new box appears for what the link reveals. That box can contain more links."));
+  w.append(field("Level name",L,"name"),field("Initial crime description",L,"description",5),
+    field("Culprit (separate accepted spellings with commas; the first is shown in the report)",L,"culprit"),
+    field("After action report (full details of the crime)",L,"report",6));
+  L.agents.forEach((a,ai)=>{
+    const d=el("div","ag");d.append(field("Agent "+(ai+1)+" name",a,"name"));
+    a.items.forEach((it,k)=>d.append(nodeEd(it,"Information "+(k+1))));
+    w.append(d);
+  });
+  const p=el("button",null,"Play this level");p.onclick=()=>play(L);w.append(p);
+  view.append(w);
+}
+load();
+</script>
+</body>
+</html>
